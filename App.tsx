@@ -1,4 +1,6 @@
 
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import { ViewType, Project, User } from './types';
 import Sidebar from './components/Sidebar';
@@ -7,7 +9,9 @@ import ProjectForm from './components/ProjectForm';
 import ProjectList from './components/ProjectList';
 import History from './components/History';
 import Auth from './components/Auth';
-import { db } from './services/db';
+import { getProjectsAction, createProjectAction, updateProjectAction, logoutAction } from './app/actions';
+import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 
 // @google/genai: Defined AppProps to handle initial session from server-side components
 interface AppProps {
@@ -15,6 +19,7 @@ interface AppProps {
 }
 
 const App: React.FC<AppProps> = ({ initialSession }) => {
+  const router = useRouter();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentView, setCurrentView] = useState<ViewType>(ViewType.DASHBOARD);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -22,33 +27,59 @@ const App: React.FC<AppProps> = ({ initialSession }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // @google/genai: Use session from props if provided, fallback to client-side storage
-    const session = initialSession || db.users.getCurrentSession();
-    if (session) {
-      setCurrentUser(session);
-      setProjects(db.projects.getAll());
+    // @google/genai: Use session from props if provided
+    if (initialSession) {
+      setCurrentUser(initialSession);
+      loadProjects();
     }
     setLoading(false);
   }, [initialSession]);
 
-  const handleLogin = (user: User) => {
-    db.users.setCurrentSession(user);
-    setCurrentUser(user);
-    setProjects(db.projects.getAll());
+  const loadProjects = async () => {
+    const result = await getProjectsAction();
+    if (result.success && result.data) {
+      setProjects(result.data);
+    } else {
+      toast.error('Failed to load projects');
+    }
   };
 
-  const handleLogout = () => {
-    db.users.setCurrentSession(null);
+  const handleLogin = (user: User) => {
+    setCurrentUser(user);
+    loadProjects();
+  };
+
+  const handleLogout = async () => {
+    await logoutAction();
     setCurrentUser(null);
     setCurrentView(ViewType.DASHBOARD);
     setProjects([]);
+    toast.success('Logged out successfully');
+    router.push('/login');
+    router.refresh();
   };
 
-  const handleUpsert = (project: Project) => {
-    db.projects.upsert(project);
-    setProjects(db.projects.getAll());
-    setEditingProject(null);
-    setCurrentView(ViewType.DASHBOARD);
+  const handleCreateProject = async (project: Project) => {
+    const result = await createProjectAction(project);
+    if (result.success) {
+      toast.success('Project created successfully!');
+      await loadProjects();
+      setCurrentView(ViewType.DASHBOARD);
+    } else {
+      toast.error(result.error || 'Failed to create project');
+    }
+  };
+
+  const handleUpdateProject = async (project: Project) => {
+    const result = await updateProjectAction(project);
+    if (result.success) {
+      toast.success('Project updated successfully!');
+      await loadProjects();
+      setEditingProject(null);
+      setCurrentView(ViewType.DASHBOARD);
+    } else {
+      toast.error(result.error || 'Failed to update project');
+    }
   };
 
   const handleEditRequest = (project: Project) => {
@@ -64,7 +95,7 @@ const App: React.FC<AppProps> = ({ initialSession }) => {
       case ViewType.DASHBOARD: 
         return <Dashboard projects={projects} />;
       case ViewType.NEW_PROJECT: 
-        return <ProjectForm onAdd={handleUpsert} onUpdate={handleUpsert} projectToEdit={editingProject || undefined} />;
+        return <ProjectForm onAdd={handleCreateProject} onUpdate={handleUpdateProject} projectToEdit={editingProject || undefined} />;
       case ViewType.UPCOMING: 
         return <ProjectList projects={projects} type="upcoming" currentUser={currentUser} onEdit={handleEditRequest} />;
       case ViewType.COMPLETED: 

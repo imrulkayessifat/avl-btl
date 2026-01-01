@@ -3,7 +3,9 @@
 
 import React, { useState } from 'react';
 import { User, UserRole } from '../types';
-import { db } from '../services/db';
+import { registerAction, loginAction } from '../app/actions';
+import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 
 // @google/genai: Made onLogin optional to support standalone login pages in Next.js
 interface AuthProps {
@@ -11,43 +13,47 @@ interface AuthProps {
 }
 
 const Auth: React.FC<AuthProps> = ({ onLogin }) => {
+  const router = useRouter();
   const [isRegistering, setIsRegistering] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<UserRole>(UserRole.VIEWER);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleAuth = (e: React.FormEvent) => {
+  const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
+    setLoading(true);
 
-    if (isRegistering) {
-      const existing = db.users.findByUsername(username);
-      if (existing) {
-        setError('Username already registered in ledger.');
-        return;
-      }
-      const newUser: User = { username, password, role };
-      db.users.save(newUser);
-      setSuccess('Account registered. Please authorize sign-in.');
-      setIsRegistering(false);
-      setPassword('');
-    } else {
-      const user = db.users.findByUsername(username);
-      if (user && user.password === password) {
-        const sessionUser = { username: user.username, role: user.role };
-        // @google/genai: Trigger callback if present (SPA mode), otherwise persist and redirect (Page mode)
-        if (onLogin) {
-          onLogin(sessionUser);
+    try {
+      if (isRegistering) {
+        const result = await registerAction({ username, password, role });
+        if (result.success) {
+          toast.success('Account registered successfully! Please sign in.');
+          setIsRegistering(false);
+          setPassword('');
         } else {
-          db.users.setCurrentSession(sessionUser);
-          window.location.href = '/';
+          toast.error(result.error || 'Registration failed');
         }
       } else {
-        setError('Invalid corporate credentials.');
+        const result = await loginAction(username, password);
+        if (result.success && result.user) {
+          toast.success(`Welcome back, ${result.user.username}!`);
+          // @google/genai: Trigger callback if present (SPA mode), otherwise redirect (Page mode)
+          if (onLogin) {
+            onLogin(result.user);
+          } else {
+            router.push('/');
+            router.refresh();
+          }
+        } else {
+          toast.error(result.error || 'Login failed');
+        }
       }
+    } catch (err) {
+      toast.error('An unexpected error occurred');
+      console.error('Auth error:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -70,9 +76,6 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         </div>
 
         <form onSubmit={handleAuth} className="p-8 space-y-5">
-          {error && <div className="bg-red-50 text-red-600 p-3 rounded-xl text-xs font-bold border border-red-100">{error}</div>}
-          {success && <div className="bg-emerald-50 text-emerald-700 p-3 rounded-xl text-xs font-bold border border-emerald-100">{success}</div>}
-
           <div className="space-y-4">
             <div className="space-y-1">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Username</label>
@@ -83,6 +86,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                 placeholder="Official ID"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
+                disabled={loading}
               />
             </div>
             <div className="space-y-1">
@@ -94,6 +98,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
               />
             </div>
 
@@ -104,6 +109,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                   <button
                     type="button"
                     onClick={() => setRole(UserRole.VIEWER)}
+                    disabled={loading}
                     className={`py-2 rounded-lg text-xs font-bold transition-all border ${role === UserRole.VIEWER ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-slate-50 text-slate-500 border-slate-200'}`}
                   >
                     Viewer
@@ -111,6 +117,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                   <button
                     type="button"
                     onClick={() => setRole(UserRole.ADMIN)}
+                    disabled={loading}
                     className={`py-2 rounded-lg text-xs font-bold transition-all border ${role === UserRole.ADMIN ? 'bg-slate-900 text-white border-slate-900' : 'bg-slate-50 text-slate-500 border-slate-200'}`}
                   >
                     Admin
@@ -122,19 +129,19 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
 
           <button
             type="submit"
-            className="w-full bg-slate-950 text-white font-black uppercase tracking-widest py-4 rounded-xl shadow-lg hover:bg-slate-800 transition-all active:scale-[0.98]"
+            disabled={loading}
+            className="w-full bg-slate-950 text-white font-black uppercase tracking-widest py-4 rounded-xl shadow-lg hover:bg-slate-800 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isRegistering ? 'Register Credential' : 'Authorize Login'}
+            {loading ? 'Processing...' : (isRegistering ? 'Register Credential' : 'Authorize Login')}
           </button>
 
           <button
             type="button"
             onClick={() => {
               setIsRegistering(!isRegistering);
-              setError('');
-              setSuccess('');
             }}
-            className="w-full text-center text-xs font-bold text-slate-500 uppercase tracking-widest mt-2 hover:text-emerald-600 transition-colors"
+            disabled={loading}
+            className="w-full text-center text-xs font-bold text-slate-500 uppercase tracking-widest mt-2 hover:text-emerald-600 transition-colors disabled:opacity-50"
           >
             {isRegistering ? 'Back to Login' : "Request New Account"}
           </button>

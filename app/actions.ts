@@ -5,6 +5,7 @@ import { prisma } from '../lib/prisma';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { Project, User, UserRole } from '../types';
+import bcrypt from 'bcryptjs';
 
 /**
  * AUTHENTICATION ACTIONS
@@ -16,10 +17,13 @@ export async function registerAction(data: any) {
     const existing = await prisma.user.findUnique({ where: { username } });
     if (existing) return { success: false, error: 'User already exists in corporate ledger.' };
 
+    // Hash password with bcrypt
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     await prisma.user.create({
       data: {
         username,
-        password, // Note: In production, hash this with bcrypt
+        password: hashedPassword,
         role: role as string,
       }
     });
@@ -33,7 +37,13 @@ export async function registerAction(data: any) {
 export async function loginAction(username: string, password: string) {
   try {
     const user = await prisma.user.findUnique({ where: { username } });
-    if (user && user.password === password) {
+    if (!user) {
+      return { success: false, error: 'Invalid corporate credentials' };
+    }
+
+    // Verify password with bcrypt
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    if (isValidPassword) {
       const sessionUser = { username: user.username, role: user.role as UserRole };
       
       const cookieStore = await cookies();
@@ -48,6 +58,7 @@ export async function loginAction(username: string, password: string) {
     }
     return { success: false, error: 'Invalid corporate credentials' };
   } catch (e) {
+    console.error('Login Error:', e);
     return { success: false, error: 'Auth system offline' };
   }
 }
@@ -90,7 +101,7 @@ export async function getProjectsAction() {
   }
 }
 
-export async function upsertProjectAction(project: Project) {
+export async function createProjectAction(project: Project) {
   try {
     const balanceAmount = project.advanceAmount - project.expenseAmount;
     
@@ -108,22 +119,50 @@ export async function upsertProjectAction(project: Project) {
       budgetCopyAttachment: project.budgetCopyAttachment as any || null,
     };
 
-    if (project.id && project.id.length > 20) {
-      await prisma.project.update({
-        where: { id: project.id },
-        data
-      });
-    } else {
-      await prisma.project.create({
-        data: { ...data, id: crypto.randomUUID() }
-      });
-    }
+    await prisma.project.create({
+      data: { ...data, id: crypto.randomUUID() }
+    });
 
     revalidatePath('/');
     return { success: true };
   } catch (e) {
-    console.error('Upsert Error:', e);
-    return { success: false, error: 'Persistence failure' };
+    console.error('Create Error:', e);
+    return { success: false, error: 'Failed to create project' };
+  }
+}
+
+export async function updateProjectAction(project: Project) {
+  try {
+    const balanceAmount = project.advanceAmount - project.expenseAmount;
+    
+    const data = {
+      name: project.name,
+      startDate: new Date(project.startDate),
+      endDate: new Date(project.endDate),
+      budgetAmount: project.budgetAmount,
+      advanceAmount: project.advanceAmount,
+      expenseAmount: project.expenseAmount,
+      balanceAmount: balanceAmount,
+      billSubmissionDate: project.billSubmissionDate ? new Date(project.billSubmissionDate) : null,
+      sopRoiEmailSubmissionDate: project.sopRoiEmailSubmissionDate ? new Date(project.sopRoiEmailSubmissionDate) : null,
+      billTopSheetImage: project.billTopSheetImage as any || null,
+      budgetCopyAttachment: project.budgetCopyAttachment as any || null,
+    };
+
+    if (!project.id) {
+       return { success: false, error: 'Project ID is required for update' };
+    }
+
+    await prisma.project.update({
+      where: { id: project.id },
+      data
+    });
+
+    revalidatePath('/');
+    return { success: true };
+  } catch (e) {
+    console.error('Update Error:', e);
+    return { success: false, error: 'Failed to update project' };
   }
 }
 

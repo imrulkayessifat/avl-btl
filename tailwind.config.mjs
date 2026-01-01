@@ -1,5 +1,11 @@
-
-module.exports = {
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    './pages/**/*.{js,ts,jsx,tsx,mdx}',
+    './components/**/*.{js,ts,jsx,tsx,mdx}',
+    './app/**/*.{js,ts,jsx,tsx,mdx}',
+    './App.tsx',
+  ],
   theme: {
     extend: {
       colors: {
@@ -17,26 +23,12 @@ module.exports = {
           950: '#022c22',
         },
         slate: {
-          950: '#020617',
+          950: '#020617'
         }
       },
       fontFamily: {
         sans: ['Inter', 'sans-serif'],
       },
-      animation: {
-        'fadeIn': 'fadeIn 0.3s ease-out',
-        'scaleIn': 'scaleIn 0.2s ease-out',
-      },
-      keyframes: {
-        fadeIn: {
-          '0%': { opacity: '0' },
-          '100%': { opacity: '1' },
-        },
-        scaleIn: {
-          '0%': { opacity: '0', transform: 'scale(0.95)' },
-          '100%': { opacity: '1', transform: 'scale(1)' },
-        }
-      }
     },
   },
   plugins: [],

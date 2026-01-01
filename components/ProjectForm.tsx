@@ -5,8 +5,8 @@ import React, { useState, useEffect } from 'react';
 import { Project, ProjectAttachment } from '../types';
 
 interface ProjectFormProps {
-  onAdd: (project: Project) => void;
-  onUpdate?: (project: Project) => void;
+  onAdd: (project: Project) => Promise<void>;
+  onUpdate?: (project: Project) => Promise<void>;
   projectToEdit?: Project;
 }
 
@@ -59,7 +59,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onAdd, onUpdate, projectToEdi
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.startDate || !formData.endDate) {
       alert("Please fill in all mandatory fields.");
@@ -76,9 +76,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onAdd, onUpdate, projectToEdi
     };
 
     if (projectToEdit && onUpdate) {
-      onUpdate(payload);
+      await onUpdate(payload);
     } else {
-      onAdd(payload);
+      await onAdd(payload);
     }
   };
 
