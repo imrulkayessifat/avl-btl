@@ -84,11 +84,11 @@ const Dashboard: React.FC<DashboardProps> = ({ projects }) => {
                 <XAxis dataKey="name" />
                 <YAxis />
                 <Tooltip 
-                  formatter={(value: number) => formatCurrency(value)}
+                  formatter={(value: any) => formatCurrency(value || 0)}
                   contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                 />
                 <Bar dataKey="amount" radius={[8, 8, 0, 0]}>
-                  { [0,1,2,3].map((entry, index) => (
+                  { [0,1,2,3].map((_, index) => (
                     <Cell key={`cell-${index}`} fill={index === 0 ? '#2563eb' : index === 1 ? '#9333ea' : index === 2 ? '#dc2626' : '#10b981'} />
                   ))}
                 </Bar>
@@ -114,7 +114,7 @@ const Dashboard: React.FC<DashboardProps> = ({ projects }) => {
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                  <Tooltip formatter={(value: any) => formatCurrency(value || 0)} />
                 </PieChart>
               </ResponsiveContainer>
             </div>

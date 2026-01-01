@@ -4,7 +4,7 @@
 import { prisma } from '../lib/prisma';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
-import { Project, User, UserRole } from '../types';
+import { Project, UserRole } from '../types';
 import bcrypt from 'bcryptjs';
 
 /**
