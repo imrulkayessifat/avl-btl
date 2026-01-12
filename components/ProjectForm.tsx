@@ -20,6 +20,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onAdd, onUpdate, projectToEdi
     expenseAmount: 0,
     billSubmissionDate: '',
     sopRoiEmailSubmissionDate: '',
+    isSettled: false,
   });
 
   const [billTopSheet, setBillTopSheet] = useState<ProjectAttachment | null>(null);
@@ -36,13 +37,14 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onAdd, onUpdate, projectToEdi
         expenseAmount: projectToEdit.expenseAmount,
         billSubmissionDate: projectToEdit.billSubmissionDate || '',
         sopRoiEmailSubmissionDate: projectToEdit.sopRoiEmailSubmissionDate || '',
+        isSettled: projectToEdit.isSettled || false,
       });
       if (projectToEdit.billTopSheetImage) setBillTopSheet(projectToEdit.billTopSheetImage);
       if (projectToEdit.budgetCopyAttachment) setBudgetCopy(projectToEdit.budgetCopyAttachment);
     }
   }, [projectToEdit]);
 
-  const balanceAmount = formData.advanceAmount - formData.expenseAmount;
+  const balanceAmount = formData.isSettled ? 0 : formData.advanceAmount - formData.expenseAmount;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, setter: (att: ProjectAttachment) => void) => {
     const file = e.target.files?.[0];
@@ -74,7 +76,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onAdd, onUpdate, projectToEdi
       budgetCopyAttachment: budgetCopy || undefined,
       createdAt: projectToEdit ? projectToEdit.createdAt : new Date().toISOString(),
     };
-
+    console.log('Submitting project:', formData.isSettled, payload);
     if (projectToEdit && onUpdate) {
       await onUpdate(payload);
     } else {
@@ -90,7 +92,13 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onAdd, onUpdate, projectToEdi
     const num = value === '' ? 0 : parseFloat(value);
     setFormData({ ...formData, [field]: isNaN(num) ? 0 : num });
   };
-
+  const formatCurrencySimple = (val: number) =>
+    new Intl.NumberFormat('en-GB', {
+      style: 'currency',
+      currency: 'BDT',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(val);
   return (
     <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100 animate-fadeIn">
       <div className="flex items-center gap-4 mb-8 border-b border-slate-100 pb-6">
@@ -109,7 +117,21 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onAdd, onUpdate, projectToEdi
 
       <form onSubmit={handleSubmit} className="space-y-8">
         <section className="space-y-6">
-          <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-widest">Project Identity</h3>
+          <div className="flex justify-between items-center">
+            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-widest">Project Identity</h3>
+            <div className="flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
+              <label className="text-xs font-black text-slate-500 uppercase tracking-widest cursor-pointer select-none" htmlFor="isSettled">
+                Mark as Settled (Complete = 0)
+              </label>
+              <input
+                id="isSettled"
+                type="checkbox"
+                className="w-5 h-5 accent-emerald-600 cursor-pointer"
+                checked={formData.isSettled}
+                onChange={e => setFormData({ ...formData, isSettled: e.target.checked })}
+              />
+            </div>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <label className="block text-sm font-medium text-slate-700">Project Name</label>
@@ -213,13 +235,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onAdd, onUpdate, projectToEdi
             </div>
             <div className="space-y-2">
               <label className="block text-sm font-medium text-slate-700">Balance Amount (৳)</label>
-              <div className="w-full px-4 py-2.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 font-bold">
-                {new Intl.NumberFormat('en-GB', { 
-                  style: 'currency', 
-                  currency: 'BDT',
-                  minimumFractionDigits: 0,
-                  maximumFractionDigits: 0
-                }).format(balanceAmount)}
+              <div className={`w-full px-4 py-2.5 rounded-lg border font-bold transition-all ${formData.isSettled ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
+                {formatCurrencySimple(balanceAmount)}
+                {formData.isSettled && <span className="text-[10px] ml-2 uppercase font-black tracking-tighter">(Settled)</span>}
               </div>
             </div>
           </div>

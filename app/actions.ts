@@ -133,8 +133,7 @@ export async function createProjectAction(project: Project) {
 
 export async function updateProjectAction(project: Project) {
   try {
-    const balanceAmount = project.advanceAmount - project.expenseAmount;
-    
+    console.log('Updating project:', project);
     const data = {
       name: project.name,
       startDate: new Date(project.startDate),
@@ -142,7 +141,7 @@ export async function updateProjectAction(project: Project) {
       budgetAmount: project.budgetAmount,
       advanceAmount: project.advanceAmount,
       expenseAmount: project.expenseAmount,
-      balanceAmount: balanceAmount,
+      balanceAmount: project.balanceAmount,
       billSubmissionDate: project.billSubmissionDate ? new Date(project.billSubmissionDate) : null,
       sopRoiEmailSubmissionDate: project.sopRoiEmailSubmissionDate ? new Date(project.sopRoiEmailSubmissionDate) : null,
       billTopSheetImage: project.billTopSheetImage as any || null,

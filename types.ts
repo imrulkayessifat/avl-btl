@@ -38,6 +38,7 @@ export interface Project {
   billTopSheetImage?: ProjectAttachment;
   budgetCopyAttachment?: ProjectAttachment;
   createdAt: string;
+  isSettled?: boolean;
 }
 
 export interface FinancialSummary {
