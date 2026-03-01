@@ -2,6 +2,9 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import DatePicker from "react-datepicker";
+
+import "react-datepicker/dist/react-datepicker.css";
 import { Project, User, UserRole } from '../types';
 import AuditReport from './AuditReport';
 
@@ -19,7 +22,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, type, onEdit, curre
   const [previewImageBudgetCopy, setPreviewImageBudgetCopy] = useState<{ data: string, name: string } | null>(null);
   const isAdmin = currentUser.role === UserRole.ADMIN;
   // sorting state: 'desc' = newest first, 'asc' = oldest first
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [sortOrder] = useState<'asc' | 'desc'>('desc');
   // optional filter by project start date (YYYY-MM-DD)
   const [startDateFilter, setStartDateFilter] = useState<string>('');
 
@@ -147,11 +150,15 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, type, onEdit, curre
 
           <div className="flex items-center gap-1">
             <label className="text-sm text-slate-600">From:</label>
-            <input
-              type="date"
-              value={startDateFilter}
-              onChange={e => setStartDateFilter(e.target.value)}
+            <DatePicker
+              selected={startDateFilter ? new Date(startDateFilter) : null}
+              onChange={(date: Date | null) => setStartDateFilter(date ? date.toISOString().split('T')[0] : '')}
+              showYearDropdown
+              showMonthDropdown
+              dropdownMode="select"
+              dateFormat="yyyy-MM-dd"
               className="text-sm border border-slate-200 rounded px-2 py-1"
+              placeholderText="Select a date"
             />
             {startDateFilter && (
               <button
