@@ -25,6 +25,11 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, type, onEdit, curre
   const [sortOrder] = useState<'asc' | 'desc'>('desc');
   // optional filter by project start date (YYYY-MM-DD)
   const [startDateFilter, setStartDateFilter] = useState<string>('');
+  const [endDateFilter, setEndDateFilter] = useState<string>('');
+
+  // applied filters (updated when user submits the form)
+  const [appliedStartDate, setAppliedStartDate] = useState<string>('');
+  const [appliedEndDate, setAppliedEndDate] = useState<string>('');
 
   const sortedAndFilteredProjects = useMemo(() => {
     const today = new Date();
@@ -36,10 +41,15 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, type, onEdit, curre
       return type === 'completed' ? isCompleted : !isCompleted;
     });
 
-    // apply start date filter if provided
-    if (startDateFilter) {
-      const filterDate = new Date(startDateFilter);
-      filtered = filtered.filter(p => new Date(p.startDate).toDateString() === filterDate.toDateString());
+    // apply start/end filters if provided
+    if (appliedStartDate) {
+      const start = new Date(appliedStartDate);
+      filtered = filtered.filter(p => new Date(p.startDate) >= start);
+    }
+
+    if (appliedEndDate) {
+      const end = new Date(appliedEndDate);
+      filtered = filtered.filter(p => new Date(p.startDate) <= end);
     }
 
     return filtered.sort((a, b) => {
@@ -47,7 +57,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, type, onEdit, curre
       const bTime = new Date(b.startDate).getTime();
       return sortOrder === 'desc' ? bTime - aTime : aTime - bTime;
     });
-  }, [projects, type, startDateFilter]);
+  }, [projects, type, appliedStartDate, appliedEndDate, sortOrder]);
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('en-GB', {
@@ -141,15 +151,8 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, type, onEdit, curre
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          {/* <div
-            onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
-            className="flex items-center gap-2 text-sm font-medium text-blue-600 bg-blue-50 px-4 py-2 rounded-full border border-blue-100 shadow-sm cursor-pointer"
-          >
-            <span> Find</span>
-          </div> */}
-
-          <div className="flex items-center gap-1">
-            <label className="text-sm text-slate-600">From:</label>
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-slate-600">Start:</label>
             <DatePicker
               selected={startDateFilter ? new Date(startDateFilter) : null}
               onChange={(date: Date | null) => setStartDateFilter(date ? date.toISOString().split('T')[0] : '')}
@@ -158,17 +161,44 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, type, onEdit, curre
               dropdownMode="select"
               dateFormat="yyyy-MM-dd"
               className="text-sm border border-slate-200 rounded px-2 py-1"
-              placeholderText="Select a date"
+              placeholderText="From"
             />
-            {startDateFilter && (
-              <button
-                onClick={() => setStartDateFilter('')}
-                className="ml-1 text-xs text-red-500 hover:underline"
-              >
-                clear
-              </button>
-            )}
           </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-slate-600">End:</label>
+            <DatePicker
+              selected={endDateFilter ? new Date(endDateFilter) : null}
+              onChange={(date: Date | null) => setEndDateFilter(date ? date.toISOString().split('T')[0] : '')}
+              showYearDropdown
+              showMonthDropdown
+              dropdownMode="select"
+              dateFormat="yyyy-MM-dd"
+              className="text-sm border border-slate-200 rounded px-2 py-1"
+              placeholderText="To"
+            />
+          </div>
+          <button
+            onClick={() => {
+              setAppliedStartDate(startDateFilter);
+              setAppliedEndDate(endDateFilter);
+            }}
+            className="text-sm bg-blue-600 text-white px-3 py-1 rounded"
+          >
+            Apply
+          </button>
+          {(appliedStartDate || appliedEndDate) && (
+            <button
+              onClick={() => {
+                setStartDateFilter('');
+                setEndDateFilter('');
+                setAppliedStartDate('');
+                setAppliedEndDate('');
+              }}
+              className="text-sm ml-2 text-red-500 hover:underline"
+            >
+              clear filters
+            </button>
+          )}
 
           <button
             onClick={handleExportCSV}
