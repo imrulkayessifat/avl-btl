@@ -18,19 +18,33 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, type, onEdit, curre
   const [previewImage, setPreviewImage] = useState<{ data: string, name: string } | null>(null);
   const [previewImageBudgetCopy, setPreviewImageBudgetCopy] = useState<{ data: string, name: string } | null>(null);
   const isAdmin = currentUser.role === UserRole.ADMIN;
+  // sorting state: 'desc' = newest first, 'asc' = oldest first
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  // optional filter by project start date (YYYY-MM-DD)
+  const [startDateFilter, setStartDateFilter] = useState<string>('');
 
   const sortedAndFilteredProjects = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    return projects
-      .filter(p => {
-        const endDate = new Date(p.endDate);
-        const isCompleted = endDate < today;
-        return type === 'completed' ? isCompleted : !isCompleted;
-      })
-      .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
-  }, [projects, type]);
+    let filtered = projects.filter(p => {
+      const endDate = new Date(p.endDate);
+      const isCompleted = endDate < today;
+      return type === 'completed' ? isCompleted : !isCompleted;
+    });
+
+    // apply start date filter if provided
+    if (startDateFilter) {
+      const filterDate = new Date(startDateFilter);
+      filtered = filtered.filter(p => new Date(p.startDate).toDateString() === filterDate.toDateString());
+    }
+
+    return filtered.sort((a, b) => {
+      const aTime = new Date(a.startDate).getTime();
+      const bTime = new Date(b.startDate).getTime();
+      return sortOrder === 'desc' ? bTime - aTime : aTime - bTime;
+    });
+  }, [projects, type, startDateFilter]);
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('en-GB', {
@@ -124,9 +138,29 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, type, onEdit, curre
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 text-sm font-medium text-blue-600 bg-blue-50 px-4 py-2 rounded-full border border-blue-100 shadow-sm">
-            <i className="fas fa-sort-amount-down"></i>
-            <span>Sorted: Newest Start Date</span>
+          {/* <div
+            onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
+            className="flex items-center gap-2 text-sm font-medium text-blue-600 bg-blue-50 px-4 py-2 rounded-full border border-blue-100 shadow-sm cursor-pointer"
+          >
+            <span> Find</span>
+          </div> */}
+
+          <div className="flex items-center gap-1">
+            <label className="text-sm text-slate-600">From:</label>
+            <input
+              type="date"
+              value={startDateFilter}
+              onChange={e => setStartDateFilter(e.target.value)}
+              className="text-sm border border-slate-200 rounded px-2 py-1"
+            />
+            {startDateFilter && (
+              <button
+                onClick={() => setStartDateFilter('')}
+                className="ml-1 text-xs text-red-500 hover:underline"
+              >
+                clear
+              </button>
+            )}
           </div>
 
           <button
